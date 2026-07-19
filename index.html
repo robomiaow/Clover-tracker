@@ -407,6 +407,7 @@
         <button class="btn" data-nav="add-production">➕ Add Production</button>
         <button class="btn secondary" data-nav="mature-babies">🌱 Mature Babies</button>
         <button class="btn secondary" data-nav="statistics">📊 Statistics</button>
+        <button class="btn secondary" data-nav="calculator">🧮 Farm Calculator</button>
         <button class="btn secondary" data-nav="history">📜 History</button>
         <button class="btn ghost small" id="btn-undo">↩️ Undo last action</button>
       </div>
@@ -545,6 +546,46 @@
     <section class="view" id="view-history">
       <h2 class="section-title">History</h2>
       <div id="history-list"></div>
+    </section>
+
+    <!-- FARM CALCULATOR -->
+    <section class="view" id="view-calculator">
+      <h2 class="section-title">Farm Calculator</h2>
+      <div class="hint-box">Uses the game's real strange rate &amp; farm speed formulas. Defaults to your mature clovers — nudge the numbers to test "what if" placements, like guessing what a baby might turn out to be.</div>
+
+      <div class="form-card">
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--green-soft)"></span> 4-leaf placed</div>
+          <div class="stepper" data-target="calc-four">
+            <button data-step="-1">−</button><span class="val" id="calc-four">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--green-deep)"></span> 16-leaf placed</div>
+          <div class="stepper" data-target="calc-sixteen">
+            <button data-step="-1">−</button><span class="val" id="calc-sixteen">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--gold)"></span> 64-leaf placed</div>
+          <div class="stepper" data-target="calc-sixtyfour">
+            <button data-step="-1">−</button><span class="val" id="calc-sixtyfour">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn ghost small" id="calc-reset" style="margin-top:10px;width:100%;">↺ Reset to My Adults</button>
+
+      <div class="stat-block" style="margin-top:16px;">
+        <h3 style="margin:0 0 8px;font-size:0.95rem;">Result</h3>
+        <div class="stat-grid">
+          <div class="stat-item"><div class="n" id="calc-strange">0.15%</div><div class="l">Strange rate</div></div>
+          <div class="stat-item"><div class="n" id="calc-speed">100%</div><div class="l">Farm speed</div></div>
+          <div class="stat-item"><div class="n" id="calc-total">0</div><div class="l">Clovers placed</div></div>
+          <div class="stat-item"><div class="n" id="calc-weight">0</div><div class="l">Weighted score (W)</div></div>
+        </div>
+      </div>
+      <p class="small-note">Base strange rate with no clovers is 0.15%. Formulas from the community-maintained Tsuki's Odyssey wiki.</p>
     </section>
 
     <!-- SETTINGS -->

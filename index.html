@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8B6F47">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Clovers">
+<meta name="description" content="A cozy companion for tracking Tsuki Odyssey clover breeding progress.">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Tsuki Clover Tracker</title>
+<style>
+  :root{
+    --bg: #F5EDD8;
+    --bg-deep: #EADFC2;
+    --wood: #C9A876;
+    --wood-dark: #8B6F47;
+    --wood-ink: #5C4526;
+    --green-soft: #8FBC7A;
+    --green-deep: #4F7942;
+    --gold: #D4A72C;
+    --baby: #BFD8A0;
+    --ink: #4A3826;
+    --ink-soft: #7A6647;
+    --card-bg: #FFFBF0;
+    --danger: #B4543A;
+    --shadow: 0 3px 0 rgba(139,111,71,0.25);
+    --radius-lg: 22px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 8%, rgba(143,188,122,0.10), transparent 40%),
+      radial-gradient(circle at 90% 85%, rgba(212,167,44,0.08), transparent 45%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  h1,h2,h3, .display{
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    color: var(--wood-ink);
+    letter-spacing: 0.2px;
+  }
+  #app{
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header.top{
+    padding: max(18px, env(safe-area-inset-top)) 18px 8px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  header.top h1{
+    font-size: 1.5rem;
+    margin:0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .icon-btn{
+    background: var(--card-bg);
+    border: 1.5px solid var(--wood);
+    border-radius: 14px;
+    width: 44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 1.2rem;
+    box-shadow: var(--shadow);
+    cursor:pointer;
+  }
+  .icon-btn:active{ transform: translateY(2px); box-shadow:none; }
+  main{
+    flex: 1;
+    padding: 6px 16px 100px;
+    overflow-y: auto;
+  }
+  .view{ display:none; animation: fadein 0.25s ease; }
+  .view.active{ display:block; }
+  @keyframes fadein{ from{opacity:0; transform: translateY(6px);} to{opacity:1; transform:none;} }
+
+  .section-title{
+    font-size: 1.05rem;
+    margin: 18px 0 10px;
+    color: var(--wood-ink);
+  }
+  .card-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .clover-card{
+    background: var(--card-bg);
+    border: 1.5px solid var(--wood);
+    border-radius: var(--radius-md);
+    padding: 14px 10px;
+    text-align:center;
+    box-shadow: var(--shadow);
+  }
+  .clover-card .emoji{ font-size: 1.6rem; }
+  .clover-card .label{ font-size:0.8rem; color:var(--ink-soft); margin-top:2px; }
+  .clover-card .value{ font-size:1.9rem; font-weight:700; color:var(--wood-ink); font-family: Georgia, serif; margin-top:2px; }
+  .clover-card.four{ border-color: var(--green-soft); }
+  .clover-card.sixteen{ border-color: var(--green-deep); }
+  .clover-card.sixtyfour{ border-color: var(--gold); }
+  .clover-card.baby{ border-color: var(--baby); }
+
+  .totals-row{
+    display:flex;
+    gap:12px;
+    margin-top: 12px;
+  }
+  .totals-box{
+    flex:1;
+    background: var(--bg-deep);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    text-align:center;
+  }
+  .totals-box .n{ font-size:1.3rem; font-weight:700; color: var(--wood-ink); }
+  .totals-box .l{ font-size:0.72rem; color:var(--ink-soft); }
+
+  .updated-line{
+    text-align:center;
+    font-size:0.78rem;
+    color: var(--ink-soft);
+    margin-top: 14px;
+  }
+
+  .big-actions{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:18px;
+  }
+  .btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 16px 18px;
+    font-size: 1.02rem;
+    font-weight:600;
+    cursor:pointer;
+    box-shadow: var(--shadow);
+    color: var(--card-bg);
+    background: var(--green-deep);
+    min-height: 56px;
+  }
+  .btn:active{ transform: translateY(2px); box-shadow:none; }
+  .btn.secondary{ background: var(--card-bg); color: var(--wood-ink); border: 1.5px solid var(--wood); }
+  .btn.ghost{ background: transparent; color: var(--wood-ink); border: 1.5px dashed var(--wood); box-shadow:none; }
+  .btn.gold{ background: var(--gold); color: var(--wood-ink); }
+  .btn.danger{ background: var(--danger); }
+  .btn.small{ padding: 10px 14px; font-size:0.85rem; min-height:auto; }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ flex:1; }
+
+  .form-card{
+    background: var(--card-bg);
+    border: 1.5px solid var(--wood);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-top: 10px;
+  }
+  .stepper-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bg-deep);
+  }
+  .stepper-row:last-of-type{ border-bottom:none; }
+  .stepper-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:1rem;
+    font-weight:600;
+  }
+  .stepper-label .swatch{ width:12px;height:12px;border-radius:4px; }
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .stepper button{
+    width:40px; height:40px;
+    border-radius: 12px;
+    border: 1.5px solid var(--wood);
+    background: var(--bg-deep);
+    color: var(--wood-ink);
+    font-size:1.2rem;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .stepper button:active{ background: var(--wood); color:var(--card-bg); }
+  .stepper .val{
+    min-width: 34px;
+    text-align:center;
+    font-size:1.1rem;
+    font-weight:700;
+  }
+  textarea, input[type=text], input[type=number]{
+    width:100%;
+    font-family:inherit;
+    font-size:1rem;
+    padding:12px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--wood);
+    background: var(--bg);
+    color: var(--ink);
+  }
+  textarea{ resize: vertical; min-height: 60px; }
+  label.field-label{ font-size:0.82rem; color:var(--ink-soft); display:block; margin: 12px 0 6px; }
+
+  .hint-box{
+    background: var(--bg-deep);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size:0.85rem;
+    color: var(--ink-soft);
+    margin-top: 10px;
+  }
+  .error-box{
+    background: #F3DDD5;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size:0.85rem;
+    margin-top: 10px;
+    display:none;
+  }
+  .error-box.show{ display:block; }
+
+  nav.bottom{
+    position: sticky;
+    bottom:0;
+    background: var(--card-bg);
+    border-top: 1.5px solid var(--wood);
+    display:flex;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    max-width:480px;
+    margin: 0 auto;
+    width:100%;
+  }
+  nav.bottom button{
+    flex:1;
+    background:none;
+    border:none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    padding:6px 2px;
+    font-size:0.68rem;
+    color: var(--ink-soft);
+    cursor:pointer;
+  }
+  nav.bottom button .ic{ font-size:1.35rem; }
+  nav.bottom button.active{ color: var(--green-deep); font-weight:700; }
+
+  .history-entry{
+    background: var(--card-bg);
+    border: 1.5px solid var(--wood);
+    border-left: 5px solid var(--green-deep);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .history-entry.maturity{ border-left-color: var(--gold); }
+  .history-entry.override{ border-left-color: var(--danger); }
+  .history-entry .date{ font-weight:700; font-size:0.92rem; color:var(--wood-ink); }
+  .history-entry .desc{ font-size:0.9rem; margin-top:4px; line-height:1.5; }
+  .history-entry .notes{ font-size:0.83rem; font-style:italic; color:var(--ink-soft); margin-top:4px; }
+  .history-entry .row-actions{ display:flex; gap:8px; margin-top:8px; }
+  .history-entry .row-actions button{
+    background:none; border:none; font-size:0.78rem; color: var(--ink-soft);
+    text-decoration: underline; cursor:pointer; padding:4px 0;
+  }
+  .empty-state{
+    text-align:center;
+    padding: 40px 10px;
+    color: var(--ink-soft);
+  }
+  .empty-state .emoji{ font-size:2.2rem; display:block; margin-bottom:10px; }
+
+  .stat-block{
+    background: var(--card-bg);
+    border: 1.5px solid var(--wood);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .stat-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .stat-item .n{ font-size:1.2rem; font-weight:700; color:var(--wood-ink); }
+  .stat-item .l{ font-size:0.75rem; color:var(--ink-soft); }
+  canvas.chart{ width:100%; height:170px; display:block; }
+  .chart-legend{ display:flex; gap:14px; font-size:0.78rem; margin-top:6px; flex-wrap:wrap; }
+  .chart-legend span{ display:flex; align-items:center; gap:5px; }
+  .chart-legend i{ width:10px;height:10px;border-radius:3px;display:inline-block; }
+
+  .modal-overlay{
+    position:fixed; inset:0; background: rgba(74,56,38,0.45);
+    display:none; align-items:flex-end; justify-content:center;
+    z-index: 50;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-sheet{
+    background: var(--bg);
+    width:100%; max-width:480px;
+    border-radius: 22px 22px 0 0;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    max-height: 88vh;
+    overflow-y:auto;
+    box-shadow: 0 -6px 0 rgba(139,111,71,0.15);
+  }
+  .modal-sheet h2{ margin-top:0; }
+  .toast{
+    position: fixed;
+    left:50%; bottom: 90px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--wood-ink);
+    color:#fff;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size:0.88rem;
+    opacity:0;
+    transition: all 0.25s ease;
+    pointer-events:none;
+    z-index:80;
+    max-width: 85%;
+    text-align:center;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+  .settings-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+  .divider{ height:1px; background:var(--bg-deep); margin:18px 0; }
+  .small-note{ font-size:0.78rem; color:var(--ink-soft); text-align:center; margin-top:10px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <h1>☘️ Clover Tracker</h1>
+    <button class="icon-btn" data-nav="settings" aria-label="Settings">⚙️</button>
+  </header>
+
+  <main id="main">
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <h2 class="section-title">Current Garden</h2>
+      <div class="card-grid">
+        <div class="clover-card four">
+          <div class="emoji">☘️</div>
+          <div class="label">4-leaf</div>
+          <div class="value" id="d-four">0</div>
+        </div>
+        <div class="clover-card sixteen">
+          <div class="emoji">🍀</div>
+          <div class="label">16-leaf</div>
+          <div class="value" id="d-sixteen">0</div>
+        </div>
+        <div class="clover-card sixtyfour">
+          <div class="emoji">✨</div>
+          <div class="label">64-leaf</div>
+          <div class="value" id="d-sixtyfour">0</div>
+        </div>
+        <div class="clover-card baby">
+          <div class="emoji">🌱</div>
+          <div class="label">Babies</div>
+          <div class="value" id="d-babies">0</div>
+        </div>
+      </div>
+
+      <div class="totals-row">
+        <div class="totals-box">
+          <div class="n" id="d-mature-total">0</div>
+          <div class="l">Mature total</div>
+        </div>
+        <div class="totals-box">
+          <div class="n" id="d-grand-total">0</div>
+          <div class="l">Total incl. babies</div>
+        </div>
+      </div>
+
+      <div class="updated-line" id="d-updated">Last updated: —</div>
+
+      <div class="big-actions">
+        <button class="btn" data-nav="add-production">➕ Add Production</button>
+        <button class="btn secondary" data-nav="mature-babies">🌱 Mature Babies</button>
+        <button class="btn secondary" data-nav="statistics">📊 Statistics</button>
+        <button class="btn secondary" data-nav="history">📜 History</button>
+        <button class="btn ghost small" id="btn-undo">↩️ Undo last action</button>
+      </div>
+    </section>
+
+    <!-- ADD PRODUCTION -->
+    <section class="view" id="view-add-production">
+      <h2 class="section-title">Today's Production</h2>
+      <div class="form-card">
+        <label class="field-label">Date</label>
+        <input type="date" id="ap-date">
+
+        <div class="stepper-row">
+          <div class="stepper-label"><span>🌱</span> New babies</div>
+          <div class="stepper" data-target="ap-babies">
+            <button data-step="-1">−</button><span class="val" id="ap-babies">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--green-soft)"></span> New 4-leaf</div>
+          <div class="stepper" data-target="ap-four">
+            <button data-step="-1">−</button><span class="val" id="ap-four">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--green-deep)"></span> New 16-leaf</div>
+          <div class="stepper" data-target="ap-sixteen">
+            <button data-step="-1">−</button><span class="val" id="ap-sixteen">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--gold)"></span> New 64-leaf</div>
+          <div class="stepper" data-target="ap-sixtyfour">
+            <button data-step="-1">−</button><span class="val" id="ap-sixtyfour">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+
+        <label class="field-label">Notes (optional)</label>
+        <textarea id="ap-notes" placeholder="e.g. Changed breeding layout"></textarea>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn secondary" data-nav="dashboard">Cancel</button>
+        <button class="btn" id="ap-save">Save</button>
+      </div>
+    </section>
+
+    <!-- MATURE BABIES -->
+    <section class="view" id="view-mature-babies">
+      <h2 class="section-title">Mature Babies</h2>
+      <div class="hint-box">🌱 Babies available: <strong id="mb-available">0</strong></div>
+      <div class="form-card">
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--green-soft)"></span> 4-leaf</div>
+          <div class="stepper" data-target="mb-four">
+            <button data-step="-1">−</button><span class="val" id="mb-four">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--green-deep)"></span> 16-leaf</div>
+          <div class="stepper" data-target="mb-sixteen">
+            <button data-step="-1">−</button><span class="val" id="mb-sixteen">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-label"><span class="swatch" style="background:var(--gold)"></span> 64-leaf</div>
+          <div class="stepper" data-target="mb-sixtyfour">
+            <button data-step="-1">−</button><span class="val" id="mb-sixtyfour">0</span><button data-step="1">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="error-box" id="mb-error">You've assigned more than the babies you have available.</div>
+      <div class="hint-box">Remaining unassigned: <strong id="mb-remaining">0</strong></div>
+
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn secondary" data-nav="dashboard">Cancel</button>
+        <button class="btn gold" id="mb-save">Save</button>
+      </div>
+    </section>
+
+    <!-- STATISTICS -->
+    <section class="view" id="view-statistics">
+      <h2 class="section-title">Statistics</h2>
+
+      <div class="stat-block">
+        <h3 style="margin:0 0 8px;font-size:0.95rem;">Overall</h3>
+        <div class="stat-grid">
+          <div class="stat-item"><div class="n" id="s-days">0</div><div class="l">Days tracked</div></div>
+          <div class="stat-item"><div class="n" id="s-created">0</div><div class="l">Total clovers created</div></div>
+          <div class="stat-item"><div class="n" id="s-mature">0</div><div class="l">Total mature clovers</div></div>
+          <div class="stat-item"><div class="n" id="s-babies">0</div><div class="l">Current babies</div></div>
+        </div>
+      </div>
+
+      <div class="stat-block">
+        <h3 style="margin:0 0 8px;font-size:0.95rem;">Averages / day</h3>
+        <div class="stat-grid">
+          <div class="stat-item"><div class="n" id="s-avg-all">0</div><div class="l">Clovers / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-four">0</div><div class="l">4-leaf / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-sixteen">0</div><div class="l">16-leaf / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-sixtyfour">0</div><div class="l">64-leaf / day</div></div>
+        </div>
+      </div>
+
+      <div class="stat-block">
+        <h3 style="margin:0 0 8px;font-size:0.95rem;">Records</h3>
+        <div class="stat-grid">
+          <div class="stat-item"><div class="n" id="s-record-day">0</div><div class="l">Biggest production day</div></div>
+          <div class="stat-item"><div class="n" id="s-record-64">0</div><div class="l">Most 64-leaf in one day</div></div>
+          <div class="stat-item"><div class="n" id="s-record-streak">0</div><div class="l">Longest tracking streak</div></div>
+        </div>
+      </div>
+
+      <div class="stat-block">
+        <h3 style="margin:0;font-size:0.95rem;">Daily Production</h3>
+        <canvas class="chart" id="chart-daily"></canvas>
+        <div class="chart-legend">
+          <span><i style="background:var(--green-soft)"></i>4-leaf</span>
+          <span><i style="background:var(--green-deep)"></i>16-leaf</span>
+          <span><i style="background:var(--gold)"></i>64-leaf</span>
+        </div>
+      </div>
+
+      <div class="stat-block">
+        <h3 style="margin:0;font-size:0.95rem;">Total Collection Growth</h3>
+        <canvas class="chart" id="chart-growth"></canvas>
+      </div>
+
+      <div class="stat-block">
+        <h3 style="margin:0;font-size:0.95rem;">Baby Backlog</h3>
+        <canvas class="chart" id="chart-babies"></canvas>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="view" id="view-history">
+      <h2 class="section-title">History</h2>
+      <div id="history-list"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <h2 class="section-title">Settings</h2>
+      <div class="settings-list">
+        <button class="btn secondary" id="btn-override">✏️ Set Current Totals (Override)</button>
+        <button class="btn secondary" id="btn-export">⬇️ Export Backup</button>
+        <button class="btn secondary" id="btn-import">⬆️ Import Backup</button>
+        <input type="file" id="file-import" accept="application/json" style="display:none;">
+        <div class="divider"></div>
+        <button class="btn danger" id="btn-reset">🗑️ Reset All Data</button>
+      </div>
+      <p class="small-note">Tsuki Clover Tracker keeps everything on this device. Export a backup before switching phones.</p>
+    </section>
+
+  </main>
+
+  <nav class="bottom">
+    <button data-nav="dashboard" class="active"><span class="ic">☘️</span>Home</button>
+    <button data-nav="add-production"><span class="ic">➕</span>Add</button>
+    <button data-nav="mature-babies"><span class="ic">🌱</span>Mature</button>
+    <button data-nav="statistics"><span class="ic">📊</span>Stats</button>
+    <button data-nav="history"><span class="ic">📜</span>History</button>
+  </nav>
+</div>
+
+<!-- OVERRIDE MODAL -->
+<div class="modal-overlay" id="override-modal">
+  <div class="modal-sheet">
+    <h2>Set Current Totals</h2>
+    <p class="small-note" style="margin-top:-4px;">Use this to correct mistakes or set up your existing collection.</p>
+    <label class="field-label">☘️ 4-leaf</label>
+    <input type="number" inputmode="numeric" min="0" id="ov-four">
+    <label class="field-label">🍀 16-leaf</label>
+    <input type="number" inputmode="numeric" min="0" id="ov-sixteen">
+    <label class="field-label">✨ 64-leaf</label>
+    <input type="number" inputmode="numeric" min="0" id="ov-sixtyfour">
+    <label class="field-label">🌱 Babies</label>
+    <input type="number" inputmode="numeric" min="0" id="ov-babies">
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn secondary" id="ov-cancel">Cancel</button>
+      <button class="btn" id="ov-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT HISTORY MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-sheet" id="edit-modal-content">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

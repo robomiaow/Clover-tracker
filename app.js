@@ -293,6 +293,10 @@
     setVal("calc-four", t.four);
     setVal("calc-sixteen", t.sixteen);
     setVal("calc-sixtyfour", t.sixtyfour);
+    document.getElementById("calc-snap-four").textContent = t.four;
+    document.getElementById("calc-snap-sixteen").textContent = t.sixteen;
+    document.getElementById("calc-snap-sixtyfour").textContent = t.sixtyfour;
+    document.getElementById("calc-snap-babies").textContent = t.babies;
     renderCalculatorResults();
   }
 

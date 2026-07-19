@@ -102,7 +102,7 @@
   }
 
   // ---------- navigation ----------
-  const views = ["dashboard", "add-production", "mature-babies", "statistics", "history", "settings"];
+  const views = ["dashboard", "add-production", "mature-babies", "statistics", "history", "calculator", "settings"];
 
   function goTo(viewName) {
     views.forEach((v) => {
@@ -115,6 +115,7 @@
     if (viewName === "mature-babies") prepMatureBabies();
     if (viewName === "statistics") renderStatistics();
     if (viewName === "history") renderHistory();
+    if (viewName === "calculator") prepCalculator();
     if (viewName === "dashboard") renderDashboard();
     window.scrollTo(0, 0);
   }
@@ -187,6 +188,12 @@
     const assigned = getVal("mb-four") + getVal("mb-sixteen") + getVal("mb-sixtyfour");
     document.getElementById("mb-remaining").textContent = Math.max(0, available - assigned);
   }
+
+  // Farm Calculator steppers — unrestricted hypothetical numbers, min 0
+  wireSteppers("#view-calculator", (id, cur, step) => cur + step);
+  document.querySelectorAll("#view-calculator .stepper button").forEach((btn) => {
+    btn.addEventListener("click", renderCalculatorResults);
+  });
 
   // ---------- dashboard ----------
   function renderDashboard() {
@@ -265,6 +272,44 @@
     saveState();
     toast("Babies matured ✨");
     goTo("dashboard");
+  });
+
+  // ---------- farm calculator ----------
+  // Official formulas from the Tsuki's Odyssey wiki (Clovers page):
+  //   W  = n4 + 16*n16 + 256*n64                    (weighted clover score)
+  //   Es = (1 + log2(W + 1)) * 0.15                 (strange rate, in %)
+  //   T  = n4 + n16 + n64                           (total clovers placed)
+  //   Et = 2047 / (T^3 + 2047) * 100                (farm speed, in %)
+  function computeFarmEffects(n4, n16, n64) {
+    const W = n4 + 16 * n16 + 256 * n64;
+    const strangeRate = (1 + Math.log2(W + 1)) * 0.15;
+    const T = n4 + n16 + n64;
+    const farmSpeed = (2047 / (Math.pow(T, 3) + 2047)) * 100;
+    return { W, T, strangeRate, farmSpeed };
+  }
+
+  function prepCalculator() {
+    const t = currentTotals();
+    setVal("calc-four", t.four);
+    setVal("calc-sixteen", t.sixteen);
+    setVal("calc-sixtyfour", t.sixtyfour);
+    renderCalculatorResults();
+  }
+
+  function renderCalculatorResults() {
+    const n4 = getVal("calc-four");
+    const n16 = getVal("calc-sixteen");
+    const n64 = getVal("calc-sixtyfour");
+    const { W, T, strangeRate, farmSpeed } = computeFarmEffects(n4, n16, n64);
+    document.getElementById("calc-strange").textContent = strangeRate.toFixed(2) + "%";
+    document.getElementById("calc-speed").textContent = farmSpeed.toFixed(2) + "%";
+    document.getElementById("calc-total").textContent = T;
+    document.getElementById("calc-weight").textContent = W;
+  }
+
+  document.getElementById("calc-reset").addEventListener("click", () => {
+    prepCalculator();
+    toast("Reset to your current adults");
   });
 
   // ---------- override ----------

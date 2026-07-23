@@ -416,6 +416,7 @@
     <!-- ADD PRODUCTION -->
     <section class="view" id="view-add-production">
       <h2 class="section-title">Today's Production</h2>
+      <div class="hint-box">Most days you'll just log new babies here. Only add 4/16/64-leaf directly if you bought one from the shop — everything else matures via the 🌱 Mature Babies screen.</div>
       <div class="form-card">
         <label class="field-label">Date</label>
         <input type="date" id="ap-date">
@@ -505,24 +506,24 @@
       <div class="stat-block">
         <h3 style="margin:0 0 8px;font-size:0.95rem;">Averages / day</h3>
         <div class="stat-grid">
-          <div class="stat-item"><div class="n" id="s-avg-all">0</div><div class="l">Clovers / day</div></div>
-          <div class="stat-item"><div class="n" id="s-avg-four">0</div><div class="l">4-leaf / day</div></div>
-          <div class="stat-item"><div class="n" id="s-avg-sixteen">0</div><div class="l">16-leaf / day</div></div>
-          <div class="stat-item"><div class="n" id="s-avg-sixtyfour">0</div><div class="l">64-leaf / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-all">0</div><div class="l">New clovers / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-four">0</div><div class="l">4-leaf matured / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-sixteen">0</div><div class="l">16-leaf matured / day</div></div>
+          <div class="stat-item"><div class="n" id="s-avg-sixtyfour">0</div><div class="l">64-leaf matured / day</div></div>
         </div>
       </div>
 
       <div class="stat-block">
         <h3 style="margin:0 0 8px;font-size:0.95rem;">Records</h3>
         <div class="stat-grid">
-          <div class="stat-item"><div class="n" id="s-record-day">0</div><div class="l">Biggest production day</div></div>
-          <div class="stat-item"><div class="n" id="s-record-64">0</div><div class="l">Most 64-leaf in one day</div></div>
+          <div class="stat-item"><div class="n" id="s-record-day">0</div><div class="l">Biggest maturity day</div></div>
+          <div class="stat-item"><div class="n" id="s-record-64">0</div><div class="l">Most 64-leaf matured in a day</div></div>
           <div class="stat-item"><div class="n" id="s-record-streak">0</div><div class="l">Longest tracking streak</div></div>
         </div>
       </div>
 
       <div class="stat-block">
-        <h3 style="margin:0;font-size:0.95rem;">Daily Production</h3>
+        <h3 style="margin:0;font-size:0.95rem;">Daily Maturity</h3>
         <canvas class="chart" id="chart-daily"></canvas>
         <div class="chart-legend">
           <span><i style="background:var(--green-soft)"></i>4-leaf</span>

@@ -531,6 +531,20 @@
     return map;
   }
 
+  function groupMaturityByDate() {
+    const map = new Map();
+    state.history
+      .filter((e) => e.type === "maturity")
+      .forEach((e) => {
+        const cur = map.get(e.date) || { four: 0, sixteen: 0, sixtyfour: 0 };
+        cur.four += e.maturity.four || 0;
+        cur.sixteen += e.maturity.sixteen || 0;
+        cur.sixtyfour += e.maturity.sixtyfour || 0;
+        map.set(e.date, cur);
+      });
+    return map;
+  }
+
   function dailySnapshots() {
     const sorted = [...state.history].sort((a, b) => a.ts - b.ts);
     let totals = { four: 0, sixteen: 0, sixtyfour: 0, babies: 0 };
@@ -580,16 +594,23 @@
 
   function renderStatistics() {
     const t = currentTotals();
-    const grouped = groupProductionByDate();
+    const producedByDate = groupProductionByDate();
+    const maturedByDate = groupMaturityByDate();
     const dates = distinctDates();
     const daysTracked = dates.size;
 
-    let totalCreated = 0, sumFour = 0, sumSixteen = 0, sumSixtyfour = 0;
+    // "Total clovers created" = new clovers entering the farm at all (babies + any direct shop leaf)
+    let totalCreated = 0;
+    producedByDate.forEach((v) => {
+      totalCreated += v.four + v.sixteen + v.sixtyfour + v.babies;
+    });
+
+    // Per-type rates & records come from maturing, since that's how leaf types actually appear day to day
+    let sumFour = 0, sumSixteen = 0, sumSixtyfour = 0;
     let biggestDayVal = 0, biggestDayDate = null;
     let most64Val = 0, most64Date = null;
-    grouped.forEach((v, date) => {
-      const dayTotal = v.four + v.sixteen + v.sixtyfour + v.babies;
-      totalCreated += dayTotal;
+    maturedByDate.forEach((v, date) => {
+      const dayTotal = v.four + v.sixteen + v.sixtyfour;
       sumFour += v.four; sumSixteen += v.sixteen; sumSixtyfour += v.sixtyfour;
       if (dayTotal > biggestDayVal) { biggestDayVal = dayTotal; biggestDayDate = date; }
       if (v.sixtyfour > most64Val) { most64Val = v.sixtyfour; most64Date = date; }
@@ -608,21 +629,21 @@
 
     document.getElementById("s-record-day").textContent = biggestDayVal;
     document.getElementById("s-record-day").nextElementSibling.textContent =
-      biggestDayDate ? `Biggest day (${formatDateShort(biggestDayDate)})` : "Biggest production day";
+      biggestDayDate ? `Biggest maturity day (${formatDateShort(biggestDayDate)})` : "Biggest maturity day";
     document.getElementById("s-record-64").textContent = most64Val;
     document.getElementById("s-record-64").nextElementSibling.textContent =
-      most64Date ? `Most 64-leaf in a day (${formatDateShort(most64Date)})` : "Most 64-leaf in one day";
+      most64Date ? `Most 64-leaf matured (${formatDateShort(most64Date)})` : "Most 64-leaf matured in a day";
     document.getElementById("s-record-streak").textContent = longestStreak(dates);
 
     // charts
-    const dateKeys = [...grouped.keys()].sort();
+    const dateKeys = [...maturedByDate.keys()].sort();
     drawStackedBarChart(
       "chart-daily",
       dateKeys.map(formatDateShort),
       [
-        { color: COLORS.four, values: dateKeys.map((d) => grouped.get(d).four) },
-        { color: COLORS.sixteen, values: dateKeys.map((d) => grouped.get(d).sixteen) },
-        { color: COLORS.sixtyfour, values: dateKeys.map((d) => grouped.get(d).sixtyfour) }
+        { color: COLORS.four, values: dateKeys.map((d) => maturedByDate.get(d).four) },
+        { color: COLORS.sixteen, values: dateKeys.map((d) => maturedByDate.get(d).sixteen) },
+        { color: COLORS.sixtyfour, values: dateKeys.map((d) => maturedByDate.get(d).sixtyfour) }
       ]
     );
 

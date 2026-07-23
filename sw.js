@@ -1,4 +1,4 @@
-const CACHE_NAME = "tsuki-clover-v3";
+const CACHE_NAME = "tsuki-clover-v4";
 const ASSETS = [
   "./",
   "./index.html",

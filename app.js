@@ -647,6 +647,13 @@
       ]
     );
 
+    const babyDateKeys = [...producedByDate.keys()].sort();
+    drawStackedBarChart(
+      "chart-babies-daily",
+      babyDateKeys.map(formatDateShort),
+      [{ color: COLORS.baby, values: babyDateKeys.map((d) => producedByDate.get(d).babies) }]
+    );
+
     const snaps = dailySnapshots();
     drawLineChart(
       "chart-growth",
@@ -684,35 +691,59 @@
     ctx.fillText("Not enough data yet", w / 2, h / 2);
   }
 
+  // Picks a sensible whole-number axis scale (e.g. 0/1/2, 0/5/10/15, 0/25/50)
+  // instead of dividing the raw max in half, which produces fractions like 2.5
+  // that don't make sense for discrete clover counts.
+  function niceAxisScale(maxVal, targetTicks) {
+    targetTicks = targetTicks || 4;
+    const safeMax = Math.max(1, maxVal);
+    const rawStep = safeMax / targetTicks;
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const norm = rawStep / mag;
+    let niceNorm;
+    if (norm <= 1) niceNorm = 1;
+    else if (norm <= 2) niceNorm = 2;
+    else if (norm <= 5) niceNorm = 5;
+    else niceNorm = 10;
+    const step = Math.max(1, Math.round(niceNorm * mag));
+    const niceMax = Math.ceil(safeMax / step) * step;
+    const ticks = [];
+    for (let v = 0; v <= niceMax; v += step) ticks.push(v);
+    return { niceMax, step, ticks };
+  }
+
+  function drawGridlines(ctx, w, chartH, padL, padT, ticks, niceMax) {
+    ctx.strokeStyle = "#EADFC2";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "#7A6647";
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "right";
+    ticks.forEach((tick) => {
+      const y = padT + chartH - (tick / niceMax) * chartH;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w, y); ctx.stroke();
+      ctx.fillText(String(tick), padL - 4, y + 3);
+    });
+  }
+
   function drawStackedBarChart(id, labels, series) {
     const { ctx, w, h } = setupCanvas(id);
     if (labels.length === 0) return emptyChartMessage(ctx, w, h);
     const padL = 26, padB = 20, padT = 10;
     const chartH = h - padB - padT;
-    const maxVal = Math.max(1, ...labels.map((_, i) => series.reduce((s, ser) => s + (ser.values[i] || 0), 0)));
+    const rawMax = Math.max(0, ...labels.map((_, i) => series.reduce((s, ser) => s + (ser.values[i] || 0), 0)));
+    const { niceMax, ticks } = niceAxisScale(rawMax);
     const n = labels.length;
     const slot = (w - padL) / n;
     const barW = Math.min(28, slot * 0.6);
 
-    // gridlines
-    ctx.strokeStyle = "#EADFC2";
-    ctx.lineWidth = 1;
-    for (let g = 0; g <= 2; g++) {
-      const y = padT + (chartH / 2) * g;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w, y); ctx.stroke();
-    }
-    ctx.fillStyle = "#7A6647";
-    ctx.font = "10px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(String(maxVal), padL - 4, padT + 4);
-    ctx.fillText("0", padL - 4, padT + chartH + 2);
+    drawGridlines(ctx, w, chartH, padL, padT, ticks, niceMax);
 
     labels.forEach((label, i) => {
       let yOffset = padT + chartH;
       const x = padL + slot * i + (slot - barW) / 2;
       series.forEach((ser) => {
         const v = ser.values[i] || 0;
-        const barH = (v / maxVal) * chartH;
+        const barH = (v / niceMax) * chartH;
         ctx.fillStyle = ser.color;
         ctx.fillRect(x, yOffset - barH, barW, barH);
         yOffset -= barH;
@@ -731,27 +762,18 @@
     if (labels.length === 0) return emptyChartMessage(ctx, w, h);
     const padL = 26, padB = 20, padT = 10;
     const chartH = h - padB - padT;
-    const maxVal = Math.max(1, ...series.flatMap((s) => s.values));
+    const rawMax = Math.max(0, ...series.flatMap((s) => s.values));
+    const { niceMax, ticks } = niceAxisScale(rawMax);
     const n = labels.length;
     const stepX = n > 1 ? (w - padL) / (n - 1) : 0;
 
-    ctx.strokeStyle = "#EADFC2";
-    ctx.lineWidth = 1;
-    for (let g = 0; g <= 2; g++) {
-      const y = padT + (chartH / 2) * g;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w, y); ctx.stroke();
-    }
-    ctx.fillStyle = "#7A6647";
-    ctx.font = "10px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(String(maxVal), padL - 4, padT + 4);
-    ctx.fillText("0", padL - 4, padT + chartH + 2);
+    drawGridlines(ctx, w, chartH, padL, padT, ticks, niceMax);
 
     series.forEach((ser) => {
       ctx.beginPath();
       ser.values.forEach((v, i) => {
         const x = padL + stepX * i;
-        const y = padT + chartH - (v / maxVal) * chartH;
+        const y = padT + chartH - (v / niceMax) * chartH;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.strokeStyle = ser.color;

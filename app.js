@@ -16,13 +16,15 @@
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { history: [] };
+      if (!raw) return { history: [], settings: { mode: "growing" } };
       const parsed = JSON.parse(raw);
-      if (!parsed || !Array.isArray(parsed.history)) return { history: [] };
+      if (!parsed || !Array.isArray(parsed.history)) return { history: [], settings: { mode: "growing" } };
+      if (!parsed.settings) parsed.settings = { mode: "growing" };
+      if (parsed.settings.mode !== "full") parsed.settings.mode = "growing";
       return parsed;
     } catch (e) {
       console.error("Failed to load data", e);
-      return { history: [] };
+      return { history: [], settings: { mode: "growing" } };
     }
   }
 
@@ -36,6 +38,10 @@
   }
 
   let state = loadState();
+
+  function getMode() {
+    return state.settings && state.settings.mode === "full" ? "full" : "growing";
+  }
 
   function makeId() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -64,21 +70,31 @@
   }
 
   // ---------- totals engine ----------
+  // Each production/maturity entry is stamped with the farm mode active when it happened
+  // (entry.modeAtTime). In "full" mode, new babies still move in and out of the babies pool
+  // normally, but matured (or shop-bought) leaf clovers don't add to the totals — they're
+  // assumed to go to the Junker for income instead. The farm profile then only changes when
+  // you explicitly update it (an override entry), which always applies regardless of mode.
+  // Entries from before this feature existed have no modeAtTime and are treated as "growing".
   function computeTotals(history) {
     const sorted = [...history].sort((a, b) => a.ts - b.ts);
     let totals = { four: 0, sixteen: 0, sixtyfour: 0, babies: 0 };
     for (const e of sorted) {
       if (e.type === "production") {
         totals.babies += e.production.babies || 0;
-        totals.four += e.production.four || 0;
-        totals.sixteen += e.production.sixteen || 0;
-        totals.sixtyfour += e.production.sixtyfour || 0;
+        if (e.modeAtTime !== "full") {
+          totals.four += e.production.four || 0;
+          totals.sixteen += e.production.sixteen || 0;
+          totals.sixtyfour += e.production.sixtyfour || 0;
+        }
       } else if (e.type === "maturity") {
         const consumed = (e.maturity.four || 0) + (e.maturity.sixteen || 0) + (e.maturity.sixtyfour || 0);
         totals.babies = Math.max(0, totals.babies - consumed);
-        totals.four += e.maturity.four || 0;
-        totals.sixteen += e.maturity.sixteen || 0;
-        totals.sixtyfour += e.maturity.sixtyfour || 0;
+        if (e.modeAtTime !== "full") {
+          totals.four += e.maturity.four || 0;
+          totals.sixteen += e.maturity.sixteen || 0;
+          totals.sixtyfour += e.maturity.sixtyfour || 0;
+        }
       } else if (e.type === "override") {
         totals = {
           four: e.override.four || 0,
@@ -116,6 +132,7 @@
     if (viewName === "statistics") renderStatistics();
     if (viewName === "history") renderHistory();
     if (viewName === "calculator") prepCalculator();
+    if (viewName === "settings") renderModeUI();
     if (viewName === "dashboard") renderDashboard();
     window.scrollTo(0, 0);
   }
@@ -206,7 +223,38 @@
     document.getElementById("d-grand-total").textContent = t.four + t.sixteen + t.sixtyfour + t.babies;
     document.getElementById("d-updated").textContent = lastUpdatedLabel();
     document.getElementById("btn-undo").style.display = state.history.length ? "flex" : "none";
+    document.getElementById("d-mode-badge-wrap").innerHTML =
+      getMode() === "full" ? `<span class="mode-badge">🏡 Farm Full — totals frozen at your profile</span>` : "";
   }
+
+  // ---------- farm mode ----------
+  function renderModeUI() {
+    const mode = getMode();
+    document.getElementById("mode-growing").classList.toggle("active", mode === "growing");
+    document.getElementById("mode-full").classList.toggle("active", mode === "full");
+    document.getElementById("mode-explainer").textContent =
+      mode === "full"
+        ? "Your farm is full. New babies and matured clovers are tracked in your stats, but your totals stay frozen at your last saved profile until you update it manually."
+        : "New babies and matured clovers add straight to your totals as your farm grows.";
+  }
+
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const newMode = btn.dataset.mode;
+      if (newMode === getMode()) return;
+      const msg =
+        newMode === "full"
+          ? "Switch to Farm Full mode? From now on, new babies and matured clovers won't add to your totals — they'll only show up in your stats. Your totals stay exactly where they are now until you update your profile."
+          : "Switch back to Growing mode? New babies and matured clovers will start adding to your totals again.";
+      if (!confirm(msg)) return;
+      state.settings = state.settings || {};
+      state.settings.mode = newMode;
+      saveState();
+      renderModeUI();
+      renderDashboard();
+      toast(newMode === "full" ? "Farm Full mode on" : "Growing mode on");
+    });
+  });
 
   // ---------- add production ----------
   function prepAddProduction() {
@@ -232,7 +280,8 @@
       date,
       type: "production",
       production: { babies, four, sixteen, sixtyfour },
-      notes
+      notes,
+      modeAtTime: getMode()
     });
     saveState();
     toast("Production saved 🌱");
@@ -267,7 +316,8 @@
       date: todayStr(),
       type: "maturity",
       maturity: { four, sixteen, sixtyfour },
-      notes: ""
+      notes: "",
+      modeAtTime: getMode()
     });
     saveState();
     toast("Babies matured ✨");
@@ -361,13 +411,14 @@
 
   // ---------- history ----------
   function describeEntry(e) {
+    const fullNote = e.modeAtTime === "full" ? " (Farm Full — sent to Junker, not added to totals)" : "";
     if (e.type === "production") {
       const parts = [];
       if (e.production.babies) parts.push(`+${e.production.babies} baby clover${e.production.babies > 1 ? "s" : ""}`);
       if (e.production.four) parts.push(`+${e.production.four} 4-leaf`);
       if (e.production.sixteen) parts.push(`+${e.production.sixteen} 16-leaf`);
       if (e.production.sixtyfour) parts.push(`+${e.production.sixtyfour} 64-leaf`);
-      return "Production: " + (parts.join(", ") || "no change");
+      return "Production: " + (parts.join(", ") || "no change") + fullNote;
     }
     if (e.type === "maturity") {
       const total = e.maturity.four + e.maturity.sixteen + e.maturity.sixtyfour;
@@ -375,7 +426,7 @@
       if (e.maturity.four) parts.push(`+${e.maturity.four} 4-leaf`);
       if (e.maturity.sixteen) parts.push(`+${e.maturity.sixteen} 16-leaf`);
       if (e.maturity.sixtyfour) parts.push(`+${e.maturity.sixtyfour} 64-leaf`);
-      return `Matured ${total} baby${total > 1 ? "s" : ""}: ` + parts.join(", ");
+      return `Matured ${total} baby${total > 1 ? "s" : ""}: ` + parts.join(", ") + fullNote;
     }
     if (e.type === "override") {
       return `Manual override: set totals to 4-leaf ${e.override.four}, 16-leaf ${e.override.sixteen}, 64-leaf ${e.override.sixtyfour}, babies ${e.override.babies}`;
@@ -552,15 +603,19 @@
     for (const e of sorted) {
       if (e.type === "production") {
         totals.babies += e.production.babies || 0;
-        totals.four += e.production.four || 0;
-        totals.sixteen += e.production.sixteen || 0;
-        totals.sixtyfour += e.production.sixtyfour || 0;
+        if (e.modeAtTime !== "full") {
+          totals.four += e.production.four || 0;
+          totals.sixteen += e.production.sixteen || 0;
+          totals.sixtyfour += e.production.sixtyfour || 0;
+        }
       } else if (e.type === "maturity") {
         const consumed = (e.maturity.four || 0) + (e.maturity.sixteen || 0) + (e.maturity.sixtyfour || 0);
         totals.babies = Math.max(0, totals.babies - consumed);
-        totals.four += e.maturity.four || 0;
-        totals.sixteen += e.maturity.sixteen || 0;
-        totals.sixtyfour += e.maturity.sixtyfour || 0;
+        if (e.modeAtTime !== "full") {
+          totals.four += e.maturity.four || 0;
+          totals.sixteen += e.maturity.sixteen || 0;
+          totals.sixtyfour += e.maturity.sixtyfour || 0;
+        }
       } else if (e.type === "override") {
         totals = { ...e.override };
       }
@@ -659,11 +714,6 @@
       "chart-growth",
       snaps.map(([d]) => formatDateShort(d)),
       [{ color: COLORS.sixteen, values: snaps.map(([, v]) => v.four + v.sixteen + v.sixtyfour) }]
-    );
-    drawLineChart(
-      "chart-babies",
-      snaps.map(([d]) => formatDateShort(d)),
-      [{ color: COLORS.baby, values: snaps.map(([, v]) => v.babies) }]
     );
   }
 

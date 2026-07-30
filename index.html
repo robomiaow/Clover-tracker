@@ -352,6 +352,19 @@
   .settings-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
   .divider{ height:1px; background:var(--bg-deep); margin:18px 0; }
   .small-note{ font-size:0.78rem; color:var(--ink-soft); text-align:center; margin-top:10px; }
+  .mode-btn.active{ background: var(--green-deep); color:#fff; border-color: var(--green-deep); font-weight:700; }
+  .mode-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background: var(--bg-deep);
+    color: var(--wood-ink);
+    font-size:0.75rem;
+    font-weight:600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin: 6px auto 0;
+  }
 </style>
 </head>
 <body>
@@ -402,6 +415,7 @@
       </div>
 
       <div class="updated-line" id="d-updated">Last updated: —</div>
+      <div style="text-align:center;" id="d-mode-badge-wrap"></div>
 
       <div class="big-actions">
         <button class="btn" data-nav="add-production">➕ Add Production</button>
@@ -541,11 +555,6 @@
         <h3 style="margin:0;font-size:0.95rem;">Total Collection Growth</h3>
         <canvas class="chart" id="chart-growth"></canvas>
       </div>
-
-      <div class="stat-block">
-        <h3 style="margin:0;font-size:0.95rem;">Baby Backlog</h3>
-        <canvas class="chart" id="chart-babies"></canvas>
-      </div>
     </section>
 
     <!-- HISTORY -->
@@ -622,6 +631,16 @@
     <!-- SETTINGS -->
     <section class="view" id="view-settings">
       <h2 class="section-title">Settings</h2>
+
+      <div class="stat-block">
+        <h3 style="margin:0 0 10px;font-size:0.9rem;">Farm Status</h3>
+        <div class="btn-row">
+          <button class="btn secondary mode-btn" data-mode="growing" id="mode-growing">🌱 Growing</button>
+          <button class="btn secondary mode-btn" data-mode="full" id="mode-full">🏡 Farm Full</button>
+        </div>
+        <p class="small-note" id="mode-explainer" style="margin-top:10px;"></p>
+      </div>
+
       <div class="settings-list">
         <button class="btn secondary" id="btn-override">✏️ Set Current Totals (Override)</button>
         <button class="btn secondary" id="btn-export">⬇️ Export Backup</button>

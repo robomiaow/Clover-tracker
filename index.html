@@ -353,6 +353,8 @@
   .divider{ height:1px; background:var(--bg-deep); margin:18px 0; }
   .small-note{ font-size:0.78rem; color:var(--ink-soft); text-align:center; margin-top:10px; }
   .mode-btn.active{ background: var(--green-deep); color:#fff; border-color: var(--green-deep); font-weight:700; }
+  #current-garden-block.frozen{ filter: grayscale(0.9); opacity: 0.6; transition: filter 0.2s ease, opacity 0.2s ease; }
+  #current-garden-block{ transition: filter 0.2s ease, opacity 0.2s ease; }
   .mode-badge{
     display:inline-flex;
     align-items:center;
@@ -379,43 +381,65 @@
 
     <!-- DASHBOARD -->
     <section class="view active" id="view-dashboard">
-      <h2 class="section-title">Current Garden</h2>
-      <div class="card-grid">
+      <div id="current-garden-block">
+        <h2 class="section-title">Current Garden</h2>
+        <div class="card-grid">
+          <div class="clover-card four">
+            <div class="emoji">☘️</div>
+            <div class="label">4-leaf</div>
+            <div class="value" id="d-four">0</div>
+          </div>
+          <div class="clover-card sixteen">
+            <div class="emoji">🍀</div>
+            <div class="label">16-leaf</div>
+            <div class="value" id="d-sixteen">0</div>
+          </div>
+          <div class="clover-card sixtyfour">
+            <div class="emoji">✨</div>
+            <div class="label">64-leaf</div>
+            <div class="value" id="d-sixtyfour">0</div>
+          </div>
+          <div class="clover-card baby">
+            <div class="emoji">🌱</div>
+            <div class="label">Babies</div>
+            <div class="value" id="d-babies">0</div>
+          </div>
+        </div>
+
+        <div class="totals-row">
+          <div class="totals-box">
+            <div class="n" id="d-mature-total">0</div>
+            <div class="l">Mature total</div>
+          </div>
+          <div class="totals-box">
+            <div class="n" id="d-grand-total">0</div>
+            <div class="l">Total incl. babies</div>
+          </div>
+        </div>
+
+        <div class="updated-line" id="d-updated">Last updated: —</div>
+        <div style="text-align:center;" id="d-mode-badge-wrap"></div>
+      </div>
+
+      <h2 class="section-title" style="margin-top:24px;">All-Time Totals</h2>
+      <div class="card-grid" style="grid-template-columns: repeat(3, 1fr);">
         <div class="clover-card four">
           <div class="emoji">☘️</div>
           <div class="label">4-leaf</div>
-          <div class="value" id="d-four">0</div>
+          <div class="value" id="at-four">0</div>
         </div>
         <div class="clover-card sixteen">
           <div class="emoji">🍀</div>
           <div class="label">16-leaf</div>
-          <div class="value" id="d-sixteen">0</div>
+          <div class="value" id="at-sixteen">0</div>
         </div>
         <div class="clover-card sixtyfour">
           <div class="emoji">✨</div>
           <div class="label">64-leaf</div>
-          <div class="value" id="d-sixtyfour">0</div>
-        </div>
-        <div class="clover-card baby">
-          <div class="emoji">🌱</div>
-          <div class="label">Babies</div>
-          <div class="value" id="d-babies">0</div>
+          <div class="value" id="at-sixtyfour">0</div>
         </div>
       </div>
-
-      <div class="totals-row">
-        <div class="totals-box">
-          <div class="n" id="d-mature-total">0</div>
-          <div class="l">Mature total</div>
-        </div>
-        <div class="totals-box">
-          <div class="n" id="d-grand-total">0</div>
-          <div class="l">Total incl. babies</div>
-        </div>
-      </div>
-
-      <div class="updated-line" id="d-updated">Last updated: —</div>
-      <div style="text-align:center;" id="d-mode-badge-wrap"></div>
+      <p class="small-note" style="margin-top:8px;">Every clover you've ever matured or bought, in either mode — keeps climbing even while your Current Garden is frozen.</p>
 
       <div class="big-actions">
         <button class="btn" data-nav="add-production">➕ Add Production</button>
@@ -643,6 +667,7 @@
 
       <div class="settings-list">
         <button class="btn secondary" id="btn-override">✏️ Set Current Totals (Override)</button>
+        <button class="btn secondary" id="btn-override-alltime">🏆 Update All-Time Totals</button>
         <button class="btn secondary" id="btn-export">⬇️ Export Backup</button>
         <button class="btn secondary" id="btn-import">⬆️ Import Backup</button>
         <input type="file" id="file-import" accept="application/json" style="display:none;">
@@ -679,6 +704,24 @@
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn secondary" id="ov-cancel">Cancel</button>
       <button class="btn" id="ov-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALL-TIME TOTALS OVERRIDE MODAL -->
+<div class="modal-overlay" id="alltime-modal">
+  <div class="modal-sheet">
+    <h2>Update All-Time Totals</h2>
+    <p class="small-note" style="margin-top:-4px;">Corrects your lifetime matured/bought counts, independently of your Current Garden.</p>
+    <label class="field-label">☘️ 4-leaf</label>
+    <input type="number" inputmode="numeric" min="0" id="at-ov-four">
+    <label class="field-label">🍀 16-leaf</label>
+    <input type="number" inputmode="numeric" min="0" id="at-ov-sixteen">
+    <label class="field-label">✨ 64-leaf</label>
+    <input type="number" inputmode="numeric" min="0" id="at-ov-sixtyfour">
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn secondary" id="at-ov-cancel">Cancel</button>
+      <button class="btn" id="at-ov-save">Save</button>
     </div>
   </div>
 </div>

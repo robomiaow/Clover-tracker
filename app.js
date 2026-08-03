@@ -111,6 +111,54 @@
     return computeTotals(state.history);
   }
 
+  // All-Time Totals: a lifetime counter of matured/bought leaf clovers that always
+  // climbs, in either mode — unlike Current Garden, which freezes in Farm Full mode.
+  // Only resets via its own dedicated "totalsOverride" entries (kept separate from
+  // the Current Garden override so the two can be corrected independently).
+  function computeAllTimeTotals(history) {
+    const sorted = [...history].sort((a, b) => a.ts - b.ts);
+    let totals = { four: 0, sixteen: 0, sixtyfour: 0 };
+    for (const e of sorted) {
+      if (e.type === "production") {
+        totals.four += e.production.four || 0;
+        totals.sixteen += e.production.sixteen || 0;
+        totals.sixtyfour += e.production.sixtyfour || 0;
+      } else if (e.type === "maturity") {
+        totals.four += e.maturity.four || 0;
+        totals.sixteen += e.maturity.sixteen || 0;
+        totals.sixtyfour += e.maturity.sixtyfour || 0;
+      } else if (e.type === "totalsOverride") {
+        totals = {
+          four: e.totalsOverride.four || 0,
+          sixteen: e.totalsOverride.sixteen || 0,
+          sixtyfour: e.totalsOverride.sixtyfour || 0
+        };
+      }
+    }
+    return totals;
+  }
+
+  function allTimeDailySnapshots(history) {
+    const sorted = [...history].sort((a, b) => a.ts - b.ts);
+    let totals = { four: 0, sixteen: 0, sixtyfour: 0 };
+    const byDate = new Map();
+    for (const e of sorted) {
+      if (e.type === "production") {
+        totals.four += e.production.four || 0;
+        totals.sixteen += e.production.sixteen || 0;
+        totals.sixtyfour += e.production.sixtyfour || 0;
+      } else if (e.type === "maturity") {
+        totals.four += e.maturity.four || 0;
+        totals.sixteen += e.maturity.sixteen || 0;
+        totals.sixtyfour += e.maturity.sixtyfour || 0;
+      } else if (e.type === "totalsOverride") {
+        totals = { ...e.totalsOverride };
+      }
+      byDate.set(e.date, { ...totals });
+    }
+    return [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  }
+
   function lastUpdatedLabel() {
     if (state.history.length === 0) return "Last updated: —";
     const sorted = [...state.history].sort((a, b) => b.ts - a.ts);
@@ -224,7 +272,13 @@
     document.getElementById("d-updated").textContent = lastUpdatedLabel();
     document.getElementById("btn-undo").style.display = state.history.length ? "flex" : "none";
     document.getElementById("d-mode-badge-wrap").innerHTML =
-      getMode() === "full" ? `<span class="mode-badge">🏡 Farm Full — totals frozen at your profile</span>` : "";
+      getMode() === "full" ? `<span class="mode-badge">🏡 Farm Full — Current Garden frozen at your profile</span>` : "";
+    document.getElementById("current-garden-block").classList.toggle("frozen", getMode() === "full");
+
+    const at = computeAllTimeTotals(state.history);
+    document.getElementById("at-four").textContent = at.four;
+    document.getElementById("at-sixteen").textContent = at.sixteen;
+    document.getElementById("at-sixtyfour").textContent = at.sixtyfour;
   }
 
   // ---------- farm mode ----------
@@ -397,6 +451,35 @@
     renderDashboard();
   });
 
+  // ---------- all-time totals override ----------
+  const alltimeModal = document.getElementById("alltime-modal");
+  document.getElementById("btn-override-alltime").addEventListener("click", () => {
+    const at = computeAllTimeTotals(state.history);
+    document.getElementById("at-ov-four").value = at.four;
+    document.getElementById("at-ov-sixteen").value = at.sixteen;
+    document.getElementById("at-ov-sixtyfour").value = at.sixtyfour;
+    alltimeModal.classList.add("show");
+  });
+  document.getElementById("at-ov-cancel").addEventListener("click", () => alltimeModal.classList.remove("show"));
+  document.getElementById("at-ov-save").addEventListener("click", () => {
+    const clamp = (v) => Math.max(0, parseInt(v, 10) || 0);
+    const four = clamp(document.getElementById("at-ov-four").value);
+    const sixteen = clamp(document.getElementById("at-ov-sixteen").value);
+    const sixtyfour = clamp(document.getElementById("at-ov-sixtyfour").value);
+    state.history.push({
+      id: makeId(),
+      ts: Date.now(),
+      date: todayStr(),
+      type: "totalsOverride",
+      totalsOverride: { four, sixteen, sixtyfour },
+      notes: ""
+    });
+    saveState();
+    alltimeModal.classList.remove("show");
+    toast("All-Time Totals updated");
+    renderDashboard();
+  });
+
   // ---------- undo ----------
   document.getElementById("btn-undo").addEventListener("click", () => {
     if (state.history.length === 0) return;
@@ -431,6 +514,9 @@
     if (e.type === "override") {
       return `Manual override: set totals to 4-leaf ${e.override.four}, 16-leaf ${e.override.sixteen}, 64-leaf ${e.override.sixtyfour}, babies ${e.override.babies}`;
     }
+    if (e.type === "totalsOverride") {
+      return `All-Time Totals updated: 4-leaf ${e.totalsOverride.four}, 16-leaf ${e.totalsOverride.sixteen}, 64-leaf ${e.totalsOverride.sixtyfour}`;
+    }
     return "";
   }
 
@@ -443,7 +529,7 @@
     const sorted = [...state.history].sort((a, b) => b.ts - a.ts);
     list.innerHTML = sorted
       .map((e) => {
-        const cls = e.type === "maturity" ? "maturity" : e.type === "override" ? "override" : "";
+        const cls = e.type === "maturity" ? "maturity" : (e.type === "override" || e.type === "totalsOverride") ? "override" : "";
         return `
         <div class="history-entry ${cls}" data-id="${e.id}">
           <div class="date">${formatDateNice(e.date)}</div>
@@ -519,6 +605,15 @@
         <label class="field-label">🌱 Babies</label>
         <input type="number" min="0" id="em-babies" value="${e.override.babies}">
       `;
+    } else if (e.type === "totalsOverride") {
+      fieldsHtml = `
+        <label class="field-label">☘️ 4-leaf</label>
+        <input type="number" min="0" id="em-four" value="${e.totalsOverride.four}">
+        <label class="field-label">🍀 16-leaf</label>
+        <input type="number" min="0" id="em-sixteen" value="${e.totalsOverride.sixteen}">
+        <label class="field-label">✨ 64-leaf</label>
+        <input type="number" min="0" id="em-sixtyfour" value="${e.totalsOverride.sixtyfour}">
+      `;
     }
 
     editModalContent.innerHTML = `
@@ -556,6 +651,12 @@
           sixteen: clamp(document.getElementById("em-sixteen").value),
           sixtyfour: clamp(document.getElementById("em-sixtyfour").value),
           babies: clamp(document.getElementById("em-babies").value)
+        };
+      } else if (e.type === "totalsOverride") {
+        e.totalsOverride = {
+          four: clamp(document.getElementById("em-four").value),
+          sixteen: clamp(document.getElementById("em-sixteen").value),
+          sixtyfour: clamp(document.getElementById("em-sixtyfour").value)
         };
       }
       saveState();
@@ -596,34 +697,6 @@
     return map;
   }
 
-  function dailySnapshots() {
-    const sorted = [...state.history].sort((a, b) => a.ts - b.ts);
-    let totals = { four: 0, sixteen: 0, sixtyfour: 0, babies: 0 };
-    const byDate = new Map();
-    for (const e of sorted) {
-      if (e.type === "production") {
-        totals.babies += e.production.babies || 0;
-        if (e.modeAtTime !== "full") {
-          totals.four += e.production.four || 0;
-          totals.sixteen += e.production.sixteen || 0;
-          totals.sixtyfour += e.production.sixtyfour || 0;
-        }
-      } else if (e.type === "maturity") {
-        const consumed = (e.maturity.four || 0) + (e.maturity.sixteen || 0) + (e.maturity.sixtyfour || 0);
-        totals.babies = Math.max(0, totals.babies - consumed);
-        if (e.modeAtTime !== "full") {
-          totals.four += e.maturity.four || 0;
-          totals.sixteen += e.maturity.sixteen || 0;
-          totals.sixtyfour += e.maturity.sixtyfour || 0;
-        }
-      } else if (e.type === "override") {
-        totals = { ...e.override };
-      }
-      byDate.set(e.date, { ...totals });
-    }
-    return [...byDate.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
-  }
-
   function distinctDates() {
     return new Set(state.history.map((e) => e.date));
   }
@@ -649,6 +722,7 @@
 
   function renderStatistics() {
     const t = currentTotals();
+    const at = computeAllTimeTotals(state.history);
     const producedByDate = groupProductionByDate();
     const maturedByDate = groupMaturityByDate();
     const dates = distinctDates();
@@ -673,7 +747,7 @@
 
     document.getElementById("s-days").textContent = daysTracked;
     document.getElementById("s-created").textContent = totalCreated;
-    document.getElementById("s-mature").textContent = t.four + t.sixteen + t.sixtyfour;
+    document.getElementById("s-mature").textContent = at.four + at.sixteen + at.sixtyfour;
     document.getElementById("s-babies").textContent = t.babies;
 
     const avg = (n) => (daysTracked ? (n / daysTracked).toFixed(1) : "0");
@@ -709,7 +783,7 @@
       [{ color: COLORS.baby, values: babyDateKeys.map((d) => producedByDate.get(d).babies) }]
     );
 
-    const snaps = dailySnapshots();
+    const snaps = allTimeDailySnapshots(state.history);
     drawLineChart(
       "chart-growth",
       snaps.map(([d]) => formatDateShort(d)),
